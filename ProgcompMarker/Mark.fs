@@ -17,6 +17,7 @@ let markHandler i : WebPart =
     context
         (fun ctx ->
             match (getAnswers (string i)).Result with
+            | Result.Error e -> $"Internal server error: %s{e}" |> UTF8.bytes |> ServerErrors.internal_error 
             | Ok d ->
                 mapJson
                     (fun (req: MarkRequest) ->
@@ -34,5 +35,4 @@ let markHandler i : WebPart =
                         { Id = i
                           Score = score
                           MaxScore = d.Length })
-            //            | Error e -> NOT_FOUND e
             )
