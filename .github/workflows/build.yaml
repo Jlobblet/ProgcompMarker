@@ -33,7 +33,7 @@ jobs:
             - name: Install dependencies
               run: dotnet restore
             - name: Build platform
-              run: dotnet publish --configuration Release --no-restore --self-contained --runtime ${{ matrix.runtime }} --output "./build_output"
+              run: dotnet publish --project ProgcompCli/ProgcompCli.fsproj --configuration Release --no-restore --self-contained --runtime ${{ matrix.runtime }} --output "./build_output"
             - name: Zip binary
               id: zip_binary
               run: |
