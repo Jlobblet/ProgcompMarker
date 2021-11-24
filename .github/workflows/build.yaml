@@ -43,7 +43,7 @@ jobs:
               with:
                   dotnet-version: "6.0.x"
             - name: Install dependencies
-              run: dotnet restore
+              run: dotnet restore ProgcompCli/ProgcompCli.fsproj
             - name: Build platform
               run: dotnet publish ProgcompCli/ProgcompCli.fsproj --configuration Release --no-restore --self-contained --runtime ${{ matrix.runtime }} --output "./build_output"
             - name: Zip binary
