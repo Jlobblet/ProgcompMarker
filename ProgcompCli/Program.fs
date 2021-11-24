@@ -77,6 +77,10 @@ data |> Array.iter proc.StandardInput.WriteLine
 proc.StandardInput.Close()
 proc.WaitForExit()
 
+if proc.ExitCode <> 0 then
+    eprinfn $"Process exited with exit code %i{proc.ExitCode}"
+    exit 1
+
 printfn "Complete!"
 
 let answers =
