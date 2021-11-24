@@ -63,7 +63,7 @@ jobs:
                   asset_path: ${{ steps.zip_binary.outputs.xz_path }}
                   asset_name: ProgcompCli-${{ matrix.runtime }}.tar.xz
                   asset_content_type: application/zip
-            - name: Upload xz
+            - name: Upload zip
               uses: actions/upload-release-asset@v1
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
