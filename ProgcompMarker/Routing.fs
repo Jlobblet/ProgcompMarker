@@ -3,8 +3,6 @@ module ProgcompMarker.Routing
 open Suave
 open Suave.Filters
 open Suave.Operators
-open Suave.Successful
-open Suave.RequestErrors
 open Inputs
 open Mark
 

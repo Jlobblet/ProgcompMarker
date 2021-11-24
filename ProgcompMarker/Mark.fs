@@ -1,12 +1,8 @@
 module ProgcompMarker.Mark
 
-open System.Text
 open Suave
 open Suave.Json
-open Suave.RequestErrors
-open Suave.Writers
 open Suave.Logging
-open Suave.Successful
 open Common
 open Data
 
@@ -15,7 +11,7 @@ let private logger = Log.create "Mark"
 
 let markHandler i : WebPart =
     context
-        (fun ctx ->
+        (fun _ ->
             match (getAnswers (string i)).Result with
             | Result.Error e -> $"Internal server error: %s{e}" |> UTF8.bytes |> ServerErrors.internal_error 
             | Ok d ->

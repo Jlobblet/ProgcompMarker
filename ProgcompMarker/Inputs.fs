@@ -4,7 +4,6 @@ open System.Text
 open Suave
 open Suave.Json
 open Suave.Logging
-open Suave.RequestErrors
 open Suave.Successful
 open Common
 open Data
@@ -13,7 +12,7 @@ let private logger = Log.create "Input"
 
 let inputsHandler i : WebPart =
     context
-        (fun ctx ->
+        (fun _ ->
             match (getInputs (string i)).Result with
             | Result.Error e -> $"Internal server error: %s{e}" |> UTF8.bytes |> ServerErrors.internal_error 
             | Ok d ->
