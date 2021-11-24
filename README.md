@@ -33,3 +33,15 @@ The solution should be an executable file (either binary or a script with approp
 `./CLI [PROBLEM NUMBER] [PATH TO EXECUTABLE]`.
 
 You may wish to first `export PROGCOMP_USER=jlb` or set it each time e.g. `PROGCOMP_USER=jlb ./CLI 1 solution1`.
+
+### Server
+
+Add the problem inputs and outputs to the `data` directory in the server's working directory. The structure should be:
+```
+data
+└── 1
+    ├── answers.txt
+    └── inputs.txt
+```
+and repeat for each problem.
+Problems must have integral names for now (bounded by 64-bit unsigned integer which should be more than enough).
