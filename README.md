@@ -24,6 +24,8 @@ Clone and run with `dotnet run -c Release`.
 
 ### ProgcompCli
 
+Set the `PROGCOMP_ENDPOINT` environment variable to `https://progcomp.uwcs.co.uk/`.
+
 Set the `PROGCOMP_USERNAME` environment variable to your username.
 This should be consistent with yourself.
 The server performs no validation on it to check that you don't change it or have a clash, so pick something reasonably unique.
