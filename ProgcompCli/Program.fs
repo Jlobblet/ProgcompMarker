@@ -39,7 +39,7 @@ let endpoint =
     UriBuilder "http://127.0.0.1:8080/"
 #else
     let e = Environment.GetEnvironmentVariable("PROGCOMP_ENDPOINT", EnvironmentVariableTarget.Process)
-    if String.IsNullOrWhiteSpace user then
+    if String.IsNullOrWhiteSpace e then
         eprintfn "Please set the PROGCOMP_ENDPOINT environment variable."
 
         exit 1
