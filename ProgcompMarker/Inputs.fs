@@ -18,7 +18,7 @@ let inputsHandler i : WebPart =
                 $"Internal server error: %s{e}"
                 |> UTF8.bytes
                 |> ServerErrors.internal_error
-            | Ok d ->
+            | Ok (_, d) ->
                 logger.log LogLevel.Info (Message.eventX $"Serving inputs for problem %u{i}")
 
                 { Id = i; Data = d }

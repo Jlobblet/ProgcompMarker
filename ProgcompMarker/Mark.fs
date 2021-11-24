@@ -79,7 +79,7 @@ let markHandler i : WebPart =
                 $"Internal server error: %s{e}"
                 |> UTF8.bytes
                 |> ServerErrors.internal_error
-            | Ok answers ->
+            | Ok (_, answers) ->
                 mapJson
                     (fun (req: MarkRequest) ->
                         let score =
