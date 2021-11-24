@@ -5,7 +5,7 @@ on:
             - "v*"
 
 jobs:
-    create-release:
+    create_release:
         runs-on: ubuntu-latest
         steps:
         -   name: Create release
@@ -17,7 +17,7 @@ jobs:
                 tag_name: ${{ github.ref }}
                 release_name: ${{ github.ref }}
     build:
-        needs: create-release
+        needs: create_release
         strategy:
             matrix: 
                 runtime:
@@ -42,8 +42,6 @@ jobs:
                   dotnet-version: "6.0.x"
             - name: Install dependencies
               run: dotnet restore
-            - name: Install dependencies
-              run: dotnet restore
             - name: Build platform
               run: dotnet publish ProgcompCli/ProgcompCli.fsproj --configuration Release --no-restore --self-contained --runtime ${{ matrix.runtime }} --output "./build_output"
             - name: Zip binary
@@ -57,7 +55,7 @@ jobs:
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
-                upload_url: ${{ steps.create_release.outputs.upload_url }}
+                upload_url: ${{ needs.create_release.steps.create_release.outputs.upload_url }}
                 asset_path: ${{ steps.zip_binary.outputs.binary_path }}
                 asset_name: ProgcompCli-${{ matrix.runtime }}.tar.xz
                 asset_content_type: application/zip
