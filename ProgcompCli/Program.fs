@@ -34,14 +34,23 @@ if String.IsNullOrWhiteSpace user then
 
     exit 1
 
+let endpoint =    
+#if DEBUG
+    UriBuilder "http://127.0.0.1:8080/"
+#else
+    let e = Environment.GetEnvironmentVariable("PROGCOMP_ENDPOINT", EnvironmentVariableTarget.Process)
+    if String.IsNullOrWhiteSpace user then
+        eprintfn "Please set the PROGCOMP_ENDPOINT environment variable."
+
+        exit 1
+    UriBuilder e
+#endif
+
 let httpClient = new HttpClient()
 
 let inputsResponse =
-    httpClient
-        .GetAsync(
-            $"http://127.0.0.1:8080/inputs/%u{problemId}"
-        )
-        .Result
+    endpoint.Path <- $"/inputs/%u{problemId}"
+    httpClient.GetAsync(endpoint.Uri).Result
 
 if not inputsResponse.IsSuccessStatusCode then
     eprintfn $"Error reading data from server: %s{inputsResponse.ToString()}"
@@ -86,12 +95,8 @@ let content =
 printfn "Sending solutions to server..."
 
 let markResponse =
-    httpClient
-        .PostAsync(
-            $"http://127.0.0.1:8080/mark/%u{inputs.Id}",
-            content
-        )
-        .Result
+    endpoint.Path <- $"/mark/%u{inputs.Id}"
+    httpClient.PostAsync(endpoint.Uri, content).Result
 
 if not markResponse.IsSuccessStatusCode then
     eprintfn $"Error reading data from server: %s{markResponse.ToString()}"
