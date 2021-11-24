@@ -1,22 +1,55 @@
 module ProgcompMarker.Data
 
+open System
+open System.Collections.Concurrent
 open System.IO
 open System.Threading.Tasks
 
 [<Literal>]
 let dataDir = "data"
 
-let problems =
-    Directory.GetDirectories dataDir
-    |> Set.ofArray
-    |> Set.map Path.GetFileName
+type CacheDictionary = ConcurrentDictionary<string, DateTime * string []>
+let private cache = CacheDictionary()
+
+let getFromCache (fp: string) =
+    task {
+        let updatedTime = File.GetLastWriteTimeUtc fp
+
+        let add =
+            Func<_, _>
+                (fun fp ->
+                    let t =
+                        task {
+                            let! data = File.ReadAllLinesAsync(fp)
+                            return updatedTime, data
+                        }
+
+                    t.Result)
+
+        let update =
+            Func<_, _, _>
+                (fun fp (oldTime, oldLines) ->
+                    let t =
+                        task {
+                            if oldTime >= updatedTime then
+                                return oldTime, oldLines
+                            else
+                                let! data = File.ReadAllLinesAsync(fp)
+                                return updatedTime, data
+                        }
+
+                    t.Result)
+
+        return cache.AddOrUpdate(fp, add, update)
+    }
 
 let private getData file problem =
-    if Set.contains problem problems then
+    let fp = Path.Combine(dataDir, problem, file)
+
+    if File.Exists fp then
         task {
-            let fp = Path.Combine(dataDir, problem, file)
-            let! lines = File.ReadAllLinesAsync fp
-            return Ok(lines)
+            let! lines = getFromCache fp
+            return Ok lines
         }
     else
         "File not found" |> Error |> Task.FromResult
