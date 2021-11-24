@@ -14,12 +14,14 @@ let inputsHandler i : WebPart =
     context
         (fun _ ->
             match (getInputs (string i)).Result with
-            | Result.Error e -> $"Internal server error: %s{e}" |> UTF8.bytes |> ServerErrors.internal_error 
+            | Result.Error e ->
+                $"Internal server error: %s{e}"
+                |> UTF8.bytes
+                |> ServerErrors.internal_error
             | Ok d ->
                 logger.log LogLevel.Info (Message.eventX $"Serving inputs for problem %u{i}")
 
                 { Id = i; Data = d }
                 |> toJson
                 |> Encoding.UTF8.GetString
-                |> OK
-            )
+                |> OK)
