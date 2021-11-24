@@ -50,14 +50,25 @@ jobs:
               id: zip_binary
               run: |
                 cd "./build_output"
-                tar cfJ "ProgcompCli-${{ matrix.runtime }}.tar.xz" *
-                echo "::set-output name=binary_path::$(readlink -f "ProgcompCli-${{ matrix.runtime }}.tar.xz")"
-            - name: Upload binary
+                tar -cJf "../ProgcompCli-${{ matrix.runtime }}.tar.xz" *
+                zip -r "../ProgcompCli-${{ matrix.runtime}}.zip" *
+                echo "::set-output name=xz_path::$(readlink -f "../ProgcompCli-${{ matrix.runtime }}.tar.xz")"
+                echo "::set-output name=zip_path::$(readlink -f "../ProgcompCli-${{ matrix.runtime }}.zip")"
+            - name: Upload xz
               uses: actions/upload-release-asset@v1
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
                   upload_url: ${{ needs.create_release.outputs.upload_url }}
-                  asset_path: ${{ steps.zip_binary.outputs.binary_path }}
+                  asset_path: ${{ steps.zip_binary.outputs.xz_path }}
                   asset_name: ProgcompCli-${{ matrix.runtime }}.tar.xz
+                  asset_content_type: application/zip
+            - name: Upload xz
+              uses: actions/upload-release-asset@v1
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ needs.create_release.outputs.upload_url }}
+                  asset_path: ${{ steps.zip_binary.outputs.zip_path }}
+                  asset_name: ProgcompCli-${{ matrix.runtime }}.zip
                   asset_content_type: application/zip
