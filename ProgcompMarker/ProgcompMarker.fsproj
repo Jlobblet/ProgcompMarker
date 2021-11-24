@@ -1,30 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net6.0</TargetFramework>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="Data.fs" />
-    <Compile Include="Inputs.fs" />
-    <Compile Include="Mark.fs" />
-    <Compile Include="Routing.fs" />
-    <Compile Include="Program.fs" />
-    <Content Include="data\1\inputs.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="data\1\answers.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="Data.fs"/>
+        <Compile Include="Inputs.fs"/>
+        <Compile Include="Mark.fs"/>
+        <Compile Include="Routing.fs"/>
+        <Compile Include="Program.fs"/>
+        <Content Include="data\1\inputs.txt">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Include="data\1\answers.txt">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Suave" Version="2.6.1" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Suave" Version="2.6.1"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Common\Common.fsproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Common\Common.fsproj"/>
+    </ItemGroup>
 
 </Project>

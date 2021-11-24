@@ -7,7 +7,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ProgcompMarker", "ProgcompM
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Common", "Common\Common.fsproj", "{930F75FD-E4EB-42D8-BC1E-7501B7347DEE}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CLI", "CLI\CLI.fsproj", "{47E18AE1-5895-4A6A-B4CC-C4838651826C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ProgcompCli", "ProgcompCli\ProgcompCli.fsproj", "{47E18AE1-5895-4A6A-B4CC-C4838651826C}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Reverser", "Reverser\Reverser.fsproj", "{C1700728-8D73-4744-81F6-7754F35ECF91}"
 EndProject
