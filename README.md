@@ -18,7 +18,7 @@ Download one of the pre-compiled releases.
 
 ### Server
 
-Clone and run with `dotnet run --release`.
+Clone and run with `dotnet run -c Release`.
 
 ## Usage
 
