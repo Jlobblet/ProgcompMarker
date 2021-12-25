@@ -108,6 +108,7 @@ module Settings =
 
         let config =
             Parser.PrintAppSettingsArguments(args, true)
+            + "\n"
 
         File.WriteAllText(ConfigFile, config, Text.Encoding.UTF8)
 
