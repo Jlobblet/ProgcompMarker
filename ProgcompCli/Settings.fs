@@ -57,7 +57,7 @@ type InputMode =
 type Settings =
     { SubmissionMode: SubmissionMode
       PassInputAsArgs: InputMode
-      Endpoint: string
+      Endpoint: UriBuilder
       Username: string
       ExecutableArgs: string []
       ExecutablePath: string
@@ -117,6 +117,12 @@ module Settings =
 
         if key.Key <> ConsoleKey.Y then exit 0
 
+    let private parseNonempty name s =
+        if String.IsNullOrWhiteSpace s then
+            failwith $"%s{name} cannot be blank."
+        else
+            s
+
     let fromArgv argv =
         let configurationReader =
             ConfigurationReader.FromAppSettingsFile ConfigFile
@@ -131,8 +137,11 @@ module Settings =
             results.Contains <@ Pass_Input_As_Args @>
             |> InputMode.PostProcess
 
-        let endpoint = results.GetResult <@ Endpoint @>
-        let username = results.GetResult <@ Username @>
+        let endpoint =
+            results.PostProcessResult(<@ Endpoint @>, parseNonempty (nameof Endpoint) >> UriBuilder)
+
+        let username =
+            results.PostProcessResult(<@ Username @>, parseNonempty (nameof Username))
 
         let executableArgs =
             results.TryGetResult <@ Executable_Args @>
