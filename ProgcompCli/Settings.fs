@@ -56,7 +56,7 @@ type InputMode =
 
 type Settings =
     { SubmissionMode: SubmissionMode
-      PassInputAsArgs: InputMode
+      InputMode: InputMode
       Endpoint: UriBuilder
       Username: string
       ExecutableArgs: string []
@@ -152,7 +152,7 @@ module Settings =
             results.GetResult <@ Problem_And_Executable @>
 
         { SubmissionMode = submissionMode
-          PassInputAsArgs = passInputAsArgs
+          InputMode = passInputAsArgs
           Endpoint = endpoint
           Username = username
           ExecutableArgs = executableArgs
