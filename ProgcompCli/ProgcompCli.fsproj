@@ -9,11 +9,16 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Settings.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Common\Common.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Argu" Version="6.1.1" />
     </ItemGroup>
 
 </Project>
