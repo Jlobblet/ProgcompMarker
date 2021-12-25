@@ -49,12 +49,21 @@ let main argv =
     info.RedirectStandardInput <- true
     info.RedirectStandardOutput <- true
     settings.ExecutableArgs |> Array.iter info.ArgumentList.Add
+        
+    if settings.InputMode = InputAsArgs then
+        if not <| Array.isEmpty settings.ExecutableArgs then
+            info.ArgumentList.Add "--"
+            
+        data |> Array.iter info.ArgumentList.Add
 
     printfn "Running solution..."
 
     let proc = Process.Start info
-    data |> Array.iter proc.StandardInput.WriteLine
-    proc.StandardInput.Close()
+    
+    if settings.InputMode = InputToStdIn then
+        data |> Array.iter proc.StandardInput.WriteLine
+        proc.StandardInput.Close()
+
     proc.WaitForExit()
 
     if proc.ExitCode <> 0 then
