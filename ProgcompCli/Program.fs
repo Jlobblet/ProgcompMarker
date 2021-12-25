@@ -12,57 +12,29 @@ let main argv =
     if not <| File.Exists ConfigFile then
         Settings.firstTimeSetup ()
 
-    let args = Settings.fromArgv argv
-    exit 0
+    let settings = Settings.fromArgv argv
 
-    if argv.Length <> 3 then
-        eprintfn $"Usage: %s{argv.[0]} ID EXECUTABLE"
-        exit 1
-
-    let problemId =
-        match UInt64.TryParse argv.[1] with
-        | true, u -> u
-        | false, _ ->
-            eprintfn $"Failed to parse %s{argv.[1]} as an unsigned integer."
-            exit 1
-
-    let executable = argv.[2]
+    let executable = settings.ExecutablePath
 
     if not <| File.Exists executable then
         eprintfn $"Could not find %s{executable} to run."
-        exit 1
-
-    let user =
-        Environment.GetEnvironmentVariable("PROGCOMP_USERNAME", EnvironmentVariableTarget.Process)
-
-    if String.IsNullOrWhiteSpace user then
-        eprintfn
-            "Please set your username in the PROGCOMP_USERNAME environment variable (any string will do - it's used to differentiate you from other participants)."
-
         exit 1
 
     let endpoint =
 #if DEBUG
         UriBuilder "http://127.0.0.1:8080/"
 #else
-        let e =
-            Environment.GetEnvironmentVariable("PROGCOMP_ENDPOINT", EnvironmentVariableTarget.Process)
-
-        if String.IsNullOrWhiteSpace e then
-            eprintfn "Please set the PROGCOMP_ENDPOINT environment variable."
-            exit 1
-
-        UriBuilder e
+        settings.Endpoint
 #endif
 
     let httpClient = new HttpClient()
 
     let inputsResponse =
-        endpoint.Path <- $"/inputs/%u{problemId}"
+        endpoint.Path <- $"/inputs/%u{settings.ProblemNumber}"
         httpClient.GetAsync(endpoint.Uri).Result
 
     if not inputsResponse.IsSuccessStatusCode then
-        eprintfn $"Error reading data from server: %s{inputsResponse.ToString()}"
+        eprintfn $"Error reading data from server: %O{inputsResponse}"
         exit 1
 
     let inputs =
@@ -99,7 +71,7 @@ let main argv =
 
     let req =
         { Id = inputs.Id
-          User = user
+          User = settings.Username
           Data = answers }
 
     let content =
