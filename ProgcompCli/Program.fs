@@ -48,6 +48,7 @@ let main argv =
     info.FileName <- executable
     info.RedirectStandardInput <- true
     info.RedirectStandardOutput <- true
+    settings.ExecutableArgs |> Array.iter info.ArgumentList.Add
 
     printfn "Running solution..."
 
