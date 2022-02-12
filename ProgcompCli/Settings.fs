@@ -78,12 +78,16 @@ module Settings =
             printf "Please enter the endpoint for the server: "
             endpoint <- Console.ReadLine()
             printf $"Is %s{endpoint} correct? (Y/n)"
-            let key = Console.ReadKey()
+            let mutable rkRetry = true
+            while rkRetry do
+                let key = Console.ReadKey()
+                if [| ConsoleKey.Enter; ConsoleKey.Y |]
+                   |> Array.contains key.Key then
+                    rkRetry <- false
+                    retry <- false
+                elif key.Key = ConsoleKey.N then
+                    rkRetry <- false
             printf "\n"
-
-            if [| ConsoleKey.Enter; ConsoleKey.Y |]
-               |> Array.contains key.Key then
-                retry <- false
 
         // Shadow to enforce immutability now
         let endpoint = endpoint
@@ -95,12 +99,16 @@ module Settings =
             printf "Please enter a username: "
             username <- Console.ReadLine()
             printf $"Is %s{username} correct? (Y/n)"
-            let key = Console.ReadKey()
+            let mutable rkRetry = true
+            while rkRetry do
+                let key = Console.ReadKey()
+                if [| ConsoleKey.Enter; ConsoleKey.Y |]
+                   |> Array.contains key.Key then
+                    rkRetry <- false
+                    retry <- false
+                elif key.Key = ConsoleKey.N then
+                    rkRetry <- false
             printf "\n"
-
-            if [| ConsoleKey.Enter; ConsoleKey.Y |]
-               |> Array.contains key.Key then
-                retry <- false
 
         let username = username
 
@@ -113,10 +121,16 @@ module Settings =
         File.WriteAllText(ConfigFile, config, Text.Encoding.UTF8)
 
         printf "Submit solution? (y/N)"
-        let key = Console.ReadKey()
-        printf "\n"
-
-        if key.Key <> ConsoleKey.Y then exit 0
+        let mutable rkRetry = true
+        while rkRetry do
+            let key = Console.ReadKey()
+            if [| ConsoleKey.Enter; ConsoleKey.N |]
+               |> Array.contains key.Key then
+                printf "\n"
+                exit 0
+            elif key.Key = ConsoleKey.Y then
+                printf "\n"
+                rkRetry <- false
 
     let private parseNonempty name s =
         if String.IsNullOrWhiteSpace s then
