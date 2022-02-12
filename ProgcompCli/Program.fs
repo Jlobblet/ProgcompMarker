@@ -1,13 +1,20 @@
 open System
 open System.Diagnostics
 open System.IO
+open System.Net
 open System.Net.Http
 open System.Text
 open System.Text.Json
+open FSharpPlus
+open FSharpPlus.Data
+open FsToolkit.ErrorHandling
 open Common
+open FsToolkit.ErrorHandling.Operator.Result
 open ProgcompCli.Args
 
 let getInputs (endpoint: UriBuilder) (httpClient: HttpClient) settings =
+    // If this function fails it can just crash the program because we need input data
+    // So no asyncResult here
     let inputsResponse =
         endpoint.Path <- $"/inputs/%u{settings.ProblemNumber}"
         httpClient.GetAsync(endpoint.Uri).Result
@@ -33,6 +40,7 @@ let getProcessStartInfo settings data =
     |> Array.iter info.ArgumentList.Add
 
     if settings.InputMode = InputAsArgs then
+        // Send data after a -- if the executable has been given arguments
         if not <| Array.isEmpty settings.ExecutableArgs then
             info.ArgumentList.Add "--"
 
@@ -40,59 +48,126 @@ let getProcessStartInfo settings data =
 
     info
 
+type RunSolutionError =
+    | ProcessStartError of exn
+    | ExitCode of int
+
 let runSolution (data: string []) settings (info: ProcessStartInfo) =
-    printfn "Running solution..."
+    result {
+        printfn "Running solution..."
 
-    let proc = Process.Start info
+        let! proc =
+            info
+            |> Result.protect Process.Start
+            |> Result.mapError ProcessStartError
 
-    if settings.InputMode = InputToStdIn then
-        data |> Array.iter proc.StandardInput.WriteLine
+        if settings.InputMode = InputToStdIn then
+            data |> Array.iter proc.StandardInput.WriteLine
 
-        proc.StandardInput.Close()
+            proc.StandardInput.Close()
 
-    proc.WaitForExit()
+        proc.WaitForExit()
 
-    if proc.ExitCode <> 0 then
-        eprintfn $"Process exited with nonzero exit code %i{proc.ExitCode}, quitting"
-        exit 1
+        if proc.ExitCode <> 0 then
+            eprintfn $"Process exited with nonzero exit code %i{proc.ExitCode}"
+            return! Error(ExitCode proc.ExitCode)
+        else
 
-    printfn "Complete!"
+            printfn "Complete!"
 
-    proc
-        .StandardOutput
-        .ReadToEnd()
-        .Split(Environment.NewLine)
-    |> Array.filter (not << String.IsNullOrWhiteSpace)
+            return
+                proc
+                    .StandardOutput
+                    .ReadToEnd()
+                    .Split(Environment.NewLine)
+                |> Array.filter (not << String.IsNullOrWhiteSpace)
+    }
+
+type SendResultsError =
+    | PostError of exn
+    | ResponseError of HttpStatusCode
+    | JsonError of exn
 
 let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputResponse) settings answers =
-    let req =
-        { Id = inputs.Id
-          User = settings.Username
-          Data = answers }
+    asyncResult {
+        let req =
+            { Id = inputs.Id
+              User = settings.Username
+              Data = answers }
 
-    let content =
-        new StringContent(JsonSerializer.Serialize req, Encoding.UTF8, "application/json")
+        let content =
+            new StringContent(JsonSerializer.Serialize req, Encoding.UTF8, "application/json")
 
-    printfn "Sending solutions to server..."
+        printfn "Sending solutions to server..."
 
-    let markResponse =
-        endpoint.Path <- $"/mark/%u{inputs.Id}"
-        httpClient.PostAsync(endpoint.Uri, content).Result
+        let! responseTask =
+            endpoint.Path <- $"/mark/%u{inputs.Id}"
 
-    if not markResponse.IsSuccessStatusCode then
-        eprintfn $"Error reading data from server: %s{markResponse.ToString()}"
-        exit 1
+            (endpoint.Uri, content)
+            |> Result.protect httpClient.PostAsync
+            |> Result.mapError PostError
 
-    JsonSerializer.Deserialize<MarkResponse>(markResponse.Content.ReadAsStream())
+        let! markResponse = responseTask
+
+        if not markResponse.IsSuccessStatusCode then
+            eprintfn $"Error reading data from server: %s{markResponse.ToString()}"
+            return! Error(ResponseError markResponse.StatusCode)
+
+        return!
+            markResponse.Content.ReadAsStream()
+            |> Result.protect JsonSerializer.Deserialize<MarkResponse>
+            |> Result.mapError JsonError
+    }
+
+type RunAndMarkError =
+    | RunSolutionError of RunSolutionError
+    | SendResultsError of SendResultsError
 
 let runAndMark endpoint httpClient settings info (inputs: InputResponse) =
-    let answers = runSolution inputs.Data settings info
+    let handleExn =
+        function
+        | Ok () -> ()
+        | Error e -> printfn $"%A{e}"
 
-    let score =
-        sendResults endpoint httpClient inputs settings answers
+    asyncResult {
+        let! answers =
+            runSolution inputs.Data settings info
+            |> Result.mapError RunSolutionError
 
-    printfn $"Score: %i{score.Score}/%i{score.MaxScore}"
+        let! score =
+            sendResults endpoint httpClient inputs settings answers
+            |>> (Result.mapError SendResultsError)
 
+        printfn $"Score: %i{score.Score}/%i{score.MaxScore}"
+    }
+    |> Async.RunSynchronously
+    |> handleExn
+
+let fileWatcherMode endpoint httpClient settings info inputs =
+    printfn "Submitting results when file changes"
+
+    let onChanged _ (args: FileSystemEventArgs) =
+        if args.ChangeType = WatcherChangeTypes.Changed then
+            printfn $"{DateTime.Now}: File changed, submitting automatically..."
+            runAndMark endpoint httpClient settings info inputs
+
+    let onDeleted _ _ =
+        printfn "File deleted, exiting"
+        exit 0
+
+    let dir =
+        Path.GetFullPath settings.ExecutablePath
+        |> Path.GetDirectoryName
+
+    let sol = Path.GetFileName settings.ExecutablePath
+    use watcher = new FileSystemWatcher(dir, sol)
+    watcher.NotifyFilter <- NotifyFilters.LastWrite
+    watcher.IncludeSubdirectories <- false
+    watcher.Changed.AddHandler onChanged
+    watcher.Deleted.AddHandler onDeleted
+    watcher.EnableRaisingEvents <- true
+    printfn "Press enter at any point to exit"
+    Console.ReadLine() |> ignore<string>
 
 [<EntryPoint>]
 let main argv =
@@ -123,28 +198,9 @@ let main argv =
     if settings.SubmissionMode = RunOnce then
         runAndMark endpoint httpClient settings info inputs
     elif settings.SubmissionMode = FileWatcherRepeat then
-        let onChanged _ (args: FileSystemEventArgs) =
-            if args.ChangeType = WatcherChangeTypes.Changed then
-                printfn $"{DateTime.Now}: File changed, submitting automatically..."
-                runAndMark endpoint httpClient settings info inputs
-
-        let onDeleted _ (args: FileSystemEventArgs) =
-            printfn "File deleted, exiting"
-            exit 0
-
-        let onRenamed _ (args: FileSystemEventArgs) =
-            printfn "File renamed, exiting"
-            exit 0
-
-        use watcher =
-            new FileSystemWatcher(settings.ExecutablePath)
-
-        watcher.NotifyFilter <- NotifyFilters.LastWrite
-        watcher.Changed.AddHandler onChanged
-        watcher.Renamed.AddHandler onRenamed
-        watcher.Deleted.AddHandler onDeleted
-
-        printfn "Press enter to exit..."
-        Console.ReadLine() |> ignore<string>
+        // Run once manually
+        runAndMark endpoint httpClient settings info inputs
+        // Run the rest automatically
+        fileWatcherMode endpoint httpClient settings info inputs
 
     0
