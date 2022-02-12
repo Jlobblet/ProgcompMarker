@@ -85,6 +85,15 @@ let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputRe
 
     JsonSerializer.Deserialize<MarkResponse>(markResponse.Content.ReadAsStream())
 
+let runAndMark endpoint httpClient settings info (inputs: InputResponse) =
+    let answers = runSolution inputs.Data settings info
+
+    let score =
+        sendResults endpoint httpClient inputs settings answers
+
+    printfn $"Score: %i{score.Score}/%i{score.MaxScore}"
+
+
 [<EntryPoint>]
 let main argv =
     if not <| File.Exists ConfigFile then
@@ -111,11 +120,31 @@ let main argv =
 
     let info = getProcessStartInfo settings inputs.Data
 
-    let answers = runSolution inputs.Data settings info
+    if settings.SubmissionMode = RunOnce then
+        runAndMark endpoint httpClient settings info inputs
+    elif settings.SubmissionMode = FileWatcherRepeat then
+        let onChanged _ (args: FileSystemEventArgs) =
+            if args.ChangeType = WatcherChangeTypes.Changed then
+                printfn $"{DateTime.Now}: File changed, submitting automatically..."
+                runAndMark endpoint httpClient settings info inputs
 
-    let score =
-        sendResults endpoint httpClient inputs settings answers
+        let onDeleted _ (args: FileSystemEventArgs) =
+            printfn "File deleted, exiting"
+            exit 0
 
-    printfn $"Score: %i{score.Score}/%i{score.MaxScore}"
+        let onRenamed _ (args: FileSystemEventArgs) =
+            printfn "File renamed, exiting"
+            exit 0
+
+        use watcher =
+            new FileSystemWatcher(settings.ExecutablePath)
+
+        watcher.NotifyFilter <- NotifyFilters.LastWrite
+        watcher.Changed.AddHandler onChanged
+        watcher.Renamed.AddHandler onRenamed
+        watcher.Deleted.AddHandler onDeleted
+
+        printfn "Press enter to exit..."
+        Console.ReadLine() |> ignore<string>
 
     0
