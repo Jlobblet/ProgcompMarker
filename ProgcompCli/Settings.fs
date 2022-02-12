@@ -79,14 +79,17 @@ module Settings =
             endpoint <- Console.ReadLine()
             printf $"Is %s{endpoint} correct? (Y/n)"
             let mutable rkRetry = true
+
             while rkRetry do
                 let key = Console.ReadKey()
+
                 if [| ConsoleKey.Enter; ConsoleKey.Y |]
                    |> Array.contains key.Key then
                     rkRetry <- false
                     retry <- false
                 elif key.Key = ConsoleKey.N then
                     rkRetry <- false
+
             printf "\n"
 
         // Shadow to enforce immutability now
@@ -100,14 +103,17 @@ module Settings =
             username <- Console.ReadLine()
             printf $"Is %s{username} correct? (Y/n)"
             let mutable rkRetry = true
+
             while rkRetry do
                 let key = Console.ReadKey()
+
                 if [| ConsoleKey.Enter; ConsoleKey.Y |]
                    |> Array.contains key.Key then
                     rkRetry <- false
                     retry <- false
                 elif key.Key = ConsoleKey.N then
                     rkRetry <- false
+
             printf "\n"
 
         let username = username
@@ -122,8 +128,10 @@ module Settings =
 
         printf "Submit solution? (y/N)"
         let mutable rkRetry = true
+
         while rkRetry do
             let key = Console.ReadKey()
+
             if [| ConsoleKey.Enter; ConsoleKey.N |]
                |> Array.contains key.Key then
                 printf "\n"
