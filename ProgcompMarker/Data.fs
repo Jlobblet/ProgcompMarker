@@ -8,38 +8,32 @@ open System.Threading.Tasks
 [<Literal>]
 let dataDir = "data"
 
-type CacheDictionary = ConcurrentDictionary<string, DateTime * string []>
+type CacheDictionary = ConcurrentDictionary<string, DateTimeOffset * string []>
 let private cache = CacheDictionary()
+
+let private add fp =
+    let updatedTime = File.GetLastWriteTimeUtc fp |> DateTimeOffset
+    let t =
+        task {
+            let! data = File.ReadAllLinesAsync(fp)
+            return updatedTime, data
+        }
+    t.Result
+
+let private update fp (oldTime, oldLines) =
+    let updatedTime = File.GetLastWriteTimeUtc fp |> DateTimeOffset
+    let t =
+        task {
+            if oldTime >= updatedTime then
+                return oldTime, oldLines
+            else
+                let! data = File.ReadAllLinesAsync(fp)
+                return updatedTime, data
+        }
+    t.Result
 
 let getFromCache (fp: string) =
     task {
-        let updatedTime = File.GetLastWriteTimeUtc fp
-
-        let add =
-            Func<_, _>
-                (fun fp ->
-                    let t =
-                        task {
-                            let! data = File.ReadAllLinesAsync(fp)
-                            return updatedTime, data
-                        }
-
-                    t.Result)
-
-        let update =
-            Func<_, _, _>
-                (fun fp (oldTime, oldLines) ->
-                    let t =
-                        task {
-                            if oldTime >= updatedTime then
-                                return oldTime, oldLines
-                            else
-                                let! data = File.ReadAllLinesAsync(fp)
-                                return updatedTime, data
-                        }
-
-                    t.Result)
-
         return cache.AddOrUpdate(fp, add, update)
     }
 
