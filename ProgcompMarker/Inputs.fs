@@ -12,7 +12,7 @@ let private logger = Log.create "Input"
 
 let inputsHandler i : WebPart =
     context (fun _ ->
-        match (getInputs (string i)).Result with
+        match getInputs (string i) with
         | Result.Error e ->
             $"Internal server error: %s{e}"
             |> UTF8.bytes
