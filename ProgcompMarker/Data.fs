@@ -2,8 +2,11 @@ module ProgcompMarker.Data
 
 open System
 open System.Collections.Concurrent
+open System.Diagnostics
 open System.IO
-open System.Threading.Tasks
+open FSharpPlus
+open FsToolkit.ErrorHandling
+open Common
 
 [<Literal>]
 let dataDir = "data"
@@ -11,49 +14,80 @@ let dataDir = "data"
 type CacheDictionary = ConcurrentDictionary<string, DateTime * string []>
 let private cache = CacheDictionary()
 
-let getFromCache (fp: string) =
-    task {
-        let updatedTime = File.GetLastWriteTimeUtc fp
+let private add fp =
+    let updatedTime = File.GetLastWriteTimeUtc fp
+    let data = File.ReadAllLines(fp)
+    updatedTime, data
 
-        let add =
-            Func<_, _>
-                (fun fp ->
-                    let t =
-                        task {
-                            let! data = File.ReadAllLinesAsync(fp)
-                            return updatedTime, data
-                        }
+let private update fp (oldTime, oldLines) =
+    let updatedTime = File.GetLastWriteTimeUtc fp
 
-                    t.Result)
+    if oldTime >= updatedTime then
+        oldTime, oldLines
+    else
+        let data = File.ReadAllLines(fp)
+        updatedTime, data
 
-        let update =
-            Func<_, _, _>
-                (fun fp (oldTime, oldLines) ->
-                    let t =
-                        task {
-                            if oldTime >= updatedTime then
-                                return oldTime, oldLines
-                            else
-                                let! data = File.ReadAllLinesAsync(fp)
-                                return updatedTime, data
-                        }
-
-                    t.Result)
-
-        return cache.AddOrUpdate(fp, add, update)
-    }
+let private getFromCache (fp: string) = cache.AddOrUpdate(fp, add, update)
 
 let private getData file problem =
     let fp = Path.Combine(dataDir, problem, file)
 
     if File.Exists fp then
-        task {
-            let! lines = getFromCache fp
-            return Ok lines
-        }
+        Ok(getFromCache fp)
     else
-        "File not found" |> Error |> Task.FromResult
+        Result.Error "File not found"
 
 let getInputs = getData "inputs.txt"
 
-let getAnswers = getData "answers.txt"
+let getAnswers problem =
+    // todo: refactor this
+    let fp =
+        Path.Combine(dataDir, problem, "mark")
+        |> Path.GetFullPath
+
+    if File.Exists fp then
+        taskResult {
+            let mark (answers: string []) =
+                taskResult {
+                    let info =
+                        ProcessStartInfo(FileName = fp, RedirectStandardInput = true, RedirectStandardOutput = true)
+
+                    let proc = Process.Start info
+                    let! _, inputs = getInputs problem
+                    inputs |> Array.iter proc.StandardInput.WriteLine
+                    answers |> Array.iter proc.StandardInput.WriteLine
+                    proc.StandardInput.Close()
+
+                    if proc.WaitForExit 10_000 then
+                        return
+                            proc.StandardOutput.ReadLine().Split(" ")
+                            |> Array.map int
+                            |> Array.exactlyThree
+                            |> CaseValidScore
+                    else
+                        return! Result.Error "Timed out"
+                }
+
+            return mark
+        }
+    else
+        taskResult {
+            let! _, data = getData "answers.txt" problem
+
+            let mark (answers: string []) =
+                taskResult {
+                    let! zipped =
+                        Result.protect (uncurry Array.zip) (data, answers)
+                        |> Result.mapError string
+
+                    let score =
+                        zipped
+                        |> Array.filter (uncurry (=))
+                        |> Array.length
+
+                    return ScoreMaxScore(score, zipped.Length)
+                }
+
+            return mark
+        }
