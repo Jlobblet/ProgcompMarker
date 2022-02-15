@@ -5,10 +5,11 @@ open System.Collections.Concurrent
 open System.IO
 open System.Text.Json
 open System.Text.Json.Serialization
-open ProgcompMarker.Mark
+open FsToolkit.ErrorHandling
 open Suave
 open Suave.Json
 open Suave.Logging
+open ProgcompMarker.Mark
 open Common
 open Data
 
@@ -35,17 +36,21 @@ type ResultsDictConverter() =
 
     override this.Read(reader, typeToConvert, options) = failwith "todo"
 
-let private addResult (user: string) (problem: uint64) (score: int) =
+let private addResult (user: string) (problem: uint64) (score: Score) =
+    let score =
+        match score with
+        | ScoreMaxScore (score, _) -> score
+        | CaseValidScore (_, _, score) -> score
+
     let now = DateTimeOffset.UtcNow
     let add = Func<_, _>(fun (_, _) -> (score, now))
 
     let update =
-        Func<_, _, _>
-            (fun (_, _) (oldScore, lastTime) ->
-                if oldScore < score then
-                    score, now
-                else
-                    oldScore, lastTime)
+        Func<_, _, _> (fun (_, _) (oldScore, lastTime) ->
+            if oldScore < score then
+                score, now
+            else
+                oldScore, lastTime)
 
     resultsDict.AddOrUpdate((user, problem), add, update)
 
@@ -55,13 +60,11 @@ let private serializeOptions =
     o
 
 let private saveResultsToFile () =
-    let contents =
-        JsonSerializer.Serialize(resultsDict, serializeOptions)
+    let contents = JsonSerializer.Serialize(resultsDict, serializeOptions)
 
     let now = DateTimeOffset.UtcNow
 
-    let filename =
-        sprintf "PROGCOMP-RESULTS-%s" (now.ToString "O")
+    let filename = sprintf "PROGCOMP-RESULTS-%s" (now.ToString "O")
 
     let dir = "output"
     let filepath = Path.Join(dir, filename)
@@ -72,29 +75,25 @@ let private saveResultsToFile () =
     File.WriteAllText(filepath, contents)
 
 let markHandler i : WebPart =
-    context
-        (fun _ ->
-            match (getAnswers (string i)).Result with
-            | Result.Error e ->
-                $"Internal server error: %s{e}"
-                |> UTF8.bytes
-                |> ServerErrors.internal_error
-            | Ok (_, answers) ->
-                mapJson
-                    (fun (req: MarkRequest) ->
-                        let score =
-                            Array.fold2 (fun acc e1 e2 -> acc + if e1 = e2 then 1 else 0) 0 req.Data answers
+    context (fun _ ->
+        match getAnswers(string i).GetAwaiter().GetResult() with
+        | Result.Error e ->
+            $"Internal server error: %s{e}"
+            |> UTF8.bytes
+            |> ServerErrors.internal_error
+        | Ok marker ->
+            mapJson (fun (req: MarkRequest) ->
+                result {
+                    let! score = marker(req.Data).GetAwaiter().GetResult()
 
-                        logger.log
-                            LogLevel.Info
-                            (Message.eventX
-                                $"Marking results for for user %s{req.User} problem %u{i}: %u{score}/%i{answers.Length}")
+                    logger.log
+                        LogLevel.Info
+                        (Message.eventX $"Marking results for for user %s{req.User} problem %u{i}: %A{score}")
 
-                        addResult req.User i score
-                        |> ignore<int * DateTimeOffset>
+                    addResult req.User i score
+                    |> ignore<int * DateTimeOffset>
 
-                        saveResultsToFile ()
+                    saveResultsToFile ()
 
-                        { Id = i
-                          Score = score
-                          MaxScore = answers.Length }))
+                    return { Id = i; Score = score }
+                }))

@@ -7,9 +7,7 @@ open ProgcompMarker.Routing
 let main _ =
     let cts = new CancellationTokenSource()
 
-    let conf =
-        { defaultConfig with
-              cancellationToken = cts.Token }
+    let conf = { defaultConfig with cancellationToken = cts.Token }
 
     let _, server = startWebServerAsync conf app
 

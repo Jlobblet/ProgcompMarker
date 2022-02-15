@@ -10,6 +10,8 @@
 
     <ItemGroup>
         <Compile Include="Settings.fs" />
+        <Compile Include="Input.fs" />
+        <Compile Include="Run.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
