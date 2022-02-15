@@ -1,6 +1,8 @@
 ﻿namespace Common
 
+open System.Reflection
 open System.Runtime.Serialization
+open Microsoft.FSharp.Reflection
 
 [<CLIMutable; DataContract>]
 type InputResponse =
@@ -18,10 +20,14 @@ type MarkRequest =
       [<field: DataMember(Name = "Data")>]
       Data: string [] }
 
-[<StructuredFormatDisplay("{StructuredFormatDisplay}"); DataContract>]
+[<StructuredFormatDisplay("{StructuredFormatDisplay}"); KnownType("KnownTypes")>]
 type Score =
-    | ScoreMaxScore of Score: int * MaxScore: int
-    | CaseValidScore of NCases: int * NValid: int * Score: int
+    | ScoreMaxScore of Score1: int * MaxScore: int
+    | CaseValidScore of NCases: int * NValid: int * Score2: int
+    static member KnownTypes() =
+        typeof<Score>.GetNestedTypes (BindingFlags.Public ||| BindingFlags.NonPublic)
+        |> Array.filter FSharpType.IsUnion
+
     override this.ToString() =
         match this with
         | ScoreMaxScore (score, maxScore) -> $"%i{score}/%i{maxScore}"
@@ -29,7 +35,7 @@ type Score =
 
     member this.StructuredFormatDisplay = this.ToString()
 
-[<CLIMutable; DataContract>]
+[<CLIMutable; DataContract; KnownType(typeof<Score>)>]
 type MarkResponse =
     { [<field: DataMember(Name = "Id")>]
       Id: uint64

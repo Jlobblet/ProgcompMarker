@@ -23,6 +23,9 @@
       <PackageReference Include="Argu" Version="6.1.1" />
       <PackageReference Include="FSharpPlus" Version="1.2.2" />
       <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
+      <PackageReference Update="FSharp.Core" Version="6.0.3" />
+      <PackageReference Include="Suave" Version="2.6.2" />
+      <PackageReference Include="System.Text.Json" Version="6.0.2" />
     </ItemGroup>
 
 </Project>

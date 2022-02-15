@@ -7,6 +7,7 @@ open System.Net
 open System.Net.Http
 open System.Text
 open System.Text.Json
+open System.Text.Json.Serialization
 open Common
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -70,7 +71,7 @@ let runSolution (data: string []) settings (info: ProcessStartInfo) =
 type SendResultsError =
     | PostError of exn
     | ResponseError of HttpStatusCode
-    | JsonError of exn
+    | ResponseJsonError of exn
 
 let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputResponse) settings answers =
     asyncResult {
@@ -80,7 +81,7 @@ let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputRe
               Data = answers }
 
         let content =
-            new StringContent(JsonSerializer.Serialize req, Encoding.UTF8, "application/json")
+            new StringContent(Suave.Json.toJson req |> Encoding.UTF8.GetString, Encoding.UTF8, "application/json")
 
         printfn "Sending solutions to server..."
 
@@ -97,10 +98,12 @@ let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputRe
             eprintfn $"Error reading data from server: %s{markResponse.ToString()}"
             return! Error(ResponseError markResponse.StatusCode)
 
+        let! bytes = markResponse.Content.ReadAsByteArrayAsync()
+
         return!
-            markResponse.Content.ReadAsStream()
-            |> Result.protect JsonSerializer.Deserialize<Result<MarkResponse, string>>
-            |> Result.mapError JsonError
+            bytes
+            |> Result.protect Suave.Json.fromJson<Result<MarkResponse, string>>
+            |> Result.mapError ResponseJsonError
     }
 
 type RunAndMarkError =
@@ -123,9 +126,9 @@ let runAndMark endpoint httpClient settings info (inputs: InputResponse) =
             sendResults endpoint httpClient inputs settings answers
             |>> (Result.mapError SendResultsError)
 
-        let! score = Result.mapError MarkSolutionError scoreResult
+        let! response = Result.mapError MarkSolutionError scoreResult
 
-        printfn $"%A{score}"
+        printfn $"%A{response.Score}"
     }
     |> Async.RunSynchronously
     |> handleExn
