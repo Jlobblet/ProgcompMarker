@@ -36,58 +36,55 @@ let private getData file problem =
     if File.Exists fp then
         Ok(getFromCache fp)
     else
-        Result.Error "File not found"
+        Error "File not found"
 
 let getInputs = getData "inputs.txt"
 
-let getAnswers problem =
-    // todo: refactor this
+let externalMarker fp problem (answers: string []) =
+    taskResult {
+        let info =
+            ProcessStartInfo(FileName = fp, RedirectStandardInput = true, RedirectStandardOutput = true)
+
+        let proc = Process.Start info
+        let! _, inputs = getInputs problem
+        inputs |> Array.iter proc.StandardInput.WriteLine
+        answers |> Array.iter proc.StandardInput.WriteLine
+        proc.StandardInput.Close()
+
+        return!
+            if proc.WaitForExit 10_000 then
+                proc.StandardOutput.ReadLine().Split(" ")
+                |> Array.map int
+                |> Array.exactlyThree
+                |> CaseValidScore
+                |> Ok
+            else
+                Error "Timed out"
+    }
+
+let equalityMarker problem (answers: string []) =
+    taskResult {
+        let! _, data = getData "answers.txt" problem
+
+        let! zipped =
+            (data, answers)
+            |> Result.protect (uncurry Array.zip) 
+            |> Result.mapError string
+
+        let score =
+            zipped
+            |> Array.filter (uncurry (=))
+            |> Array.length
+
+        return ScoreMaxScore(score, zipped.Length)
+    }
+
+let getAnswerMarker problem =
     let fp =
         Path.Combine(dataDir, problem, "mark")
         |> Path.GetFullPath
 
     if File.Exists fp then
-        taskResult {
-            let mark (answers: string []) =
-                taskResult {
-                    let info =
-                        ProcessStartInfo(FileName = fp, RedirectStandardInput = true, RedirectStandardOutput = true)
-
-                    let proc = Process.Start info
-                    let! _, inputs = getInputs problem
-                    inputs |> Array.iter proc.StandardInput.WriteLine
-                    answers |> Array.iter proc.StandardInput.WriteLine
-                    proc.StandardInput.Close()
-
-                    if proc.WaitForExit 10_000 then
-                        return
-                            proc.StandardOutput.ReadLine().Split(" ")
-                            |> Array.map int
-                            |> Array.exactlyThree
-                            |> CaseValidScore
-                    else
-                        return! Result.Error "Timed out"
-                }
-
-            return mark
-        }
+        externalMarker fp problem
     else
-        taskResult {
-            let! _, data = getData "answers.txt" problem
-
-            let mark (answers: string []) =
-                taskResult {
-                    let! zipped =
-                        Result.protect (uncurry Array.zip) (data, answers)
-                        |> Result.mapError string
-
-                    let score =
-                        zipped
-                        |> Array.filter (uncurry (=))
-                        |> Array.length
-
-                    return ScoreMaxScore(score, zipped.Length)
-                }
-
-            return mark
-        }
+        equalityMarker problem

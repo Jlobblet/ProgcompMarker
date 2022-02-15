@@ -76,24 +76,19 @@ let private saveResultsToFile () =
 
 let markHandler i : WebPart =
     context (fun _ ->
-        match getAnswers(string i).GetAwaiter().GetResult() with
-        | Result.Error e ->
-            $"Internal server error: %s{e}"
-            |> UTF8.bytes
-            |> ServerErrors.internal_error
-        | Ok marker ->
-            mapJson (fun (req: MarkRequest) ->
-                result {
-                    let! score = marker(req.Data).GetAwaiter().GetResult()
+        mapJson (fun (req: MarkRequest) ->
+            result {
+                let marker = getAnswerMarker (string i)
+                let! score = marker(req.Data).GetAwaiter().GetResult()
 
-                    logger.log
-                        LogLevel.Info
-                        (Message.eventX $"Marking results for for user %s{req.User} problem %u{i}: %A{score}")
+                logger.log
+                    LogLevel.Info
+                    (Message.eventX $"Marking results for for user %s{req.User} problem %u{i}: %A{score}")
 
-                    addResult req.User i score
-                    |> ignore<int * DateTimeOffset>
+                addResult req.User i score
+                |> ignore<int * DateTimeOffset>
 
-                    saveResultsToFile ()
+                saveResultsToFile ()
 
-                    return { Id = i; Score = score }
-                }))
+                return { Id = i; Score = score }
+            }))

@@ -6,8 +6,6 @@ open System.IO
 open System.Net
 open System.Net.Http
 open System.Text
-open System.Text.Json
-open System.Text.Json.Serialization
 open Common
 open FSharpPlus
 open FsToolkit.ErrorHandling

@@ -22,8 +22,8 @@ type MarkRequest =
 
 [<StructuredFormatDisplay("{StructuredFormatDisplay}"); KnownType("KnownTypes")>]
 type Score =
-    | ScoreMaxScore of Score1: int * MaxScore: int
-    | CaseValidScore of NCases: int * NValid: int * Score2: int
+    | ScoreMaxScore of Score: int * MaxScore: int
+    | CaseValidScore of NCases: int * NValid: int * Score: int
     static member KnownTypes() =
         typeof<Score>.GetNestedTypes (BindingFlags.Public ||| BindingFlags.NonPublic)
         |> Array.filter FSharpType.IsUnion
