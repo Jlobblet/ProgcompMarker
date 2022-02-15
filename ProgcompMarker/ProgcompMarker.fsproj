@@ -6,11 +6,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Data.fs"/>
-        <Compile Include="Inputs.fs"/>
-        <Compile Include="Mark.fs"/>
-        <Compile Include="Routing.fs"/>
-        <Compile Include="Program.fs"/>
+        <Compile Include="Utils.fs" />
+        <Compile Include="Data.fs" />
+        <Compile Include="Inputs.fs" />
+        <Compile Include="Mark.fs" />
+        <Compile Include="Routing.fs" />
+        <Compile Include="Program.fs" />
         <Content Include="data\1\inputs.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
@@ -20,11 +21,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Suave" Version="2.6.1"/>
+        <PackageReference Include="FSharpPlus" Version="1.2.2" />
+        <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
+        <PackageReference Include="Suave" Version="2.6.1" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Common\Common.fsproj"/>
+        <ProjectReference Include="..\Common\Common.fsproj" />
     </ItemGroup>
 
 </Project>

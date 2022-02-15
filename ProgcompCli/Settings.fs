@@ -1,4 +1,4 @@
-module ProgcompCli.Args
+module ProgcompCli.Settings
 
 open System
 open System.IO
@@ -147,8 +147,7 @@ module Settings =
             s
 
     let fromArgv argv =
-        let configurationReader =
-            ConfigurationReader.FromAppSettingsFile ConfigFile
+        let configurationReader = ConfigurationReader.FromAppSettingsFile ConfigFile
 
         let results = Parser.Parse(argv, configurationReader)
 
@@ -170,8 +169,7 @@ module Settings =
             results.TryGetResult <@ Executable_Args @>
             |> Option.fold (fun _ -> Array.ofList) Array.empty
 
-        let problemNumber, executablePath =
-            results.GetResult <@ Problem_And_Executable @>
+        let problemNumber, executablePath = results.GetResult <@ Problem_And_Executable @>
 
         { SubmissionMode = submissionMode
           InputMode = passInputAsArgs
