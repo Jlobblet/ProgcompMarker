@@ -18,7 +18,8 @@ let getProcessStartInfo settings data =
         ProcessStartInfo(
             FileName = settings.ExecutablePath,
             RedirectStandardInput = true,
-            RedirectStandardOutput = true
+            RedirectStandardOutput = true,
+            UseShellExecute = false
         )
 
     settings.ExecutableArgs

@@ -11,8 +11,6 @@ open Common
 [<Literal>]
 let dataDir = "data"
 
-let uncurry f (a, b) = f a b
-
 type CacheDictionary = ConcurrentDictionary<string, DateTime * string []>
 let private cache = CacheDictionary()
 
@@ -23,39 +21,38 @@ let private add fp =
 
 let private update fp (oldTime, oldLines) =
     let updatedTime = File.GetLastWriteTimeUtc fp
+
     if oldTime >= updatedTime then
         oldTime, oldLines
     else
         let data = File.ReadAllLines(fp)
         updatedTime, data
 
-let private getFromCache (fp: string) =
-    cache.AddOrUpdate(fp, add, update)
+let private getFromCache (fp: string) = cache.AddOrUpdate(fp, add, update)
 
 let private getData file problem =
     let fp = Path.Combine(dataDir, problem, file)
 
     if File.Exists fp then
         Ok(getFromCache fp)
-        
     else
-        Error "File not found"
+        Result.Error "File not found"
 
 let getInputs = getData "inputs.txt"
 
 let getAnswers problem =
     // todo: refactor this
-    let fp = Path.Combine(dataDir, problem, "mark")
+    let fp =
+        Path.Combine(dataDir, problem, "mark")
+        |> Path.GetFullPath
 
     if File.Exists fp then
         taskResult {
-            let info = ProcessStartInfo()
-            info.FileName <- Path.GetFullPath fp
-            info.RedirectStandardInput <- true
-            info.RedirectStandardOutput <- true
-
             let mark (answers: string []) =
                 taskResult {
+                    let info =
+                        ProcessStartInfo(FileName = fp, RedirectStandardInput = true, RedirectStandardOutput = true)
+
                     let proc = Process.Start info
                     let! _, inputs = getInputs problem
                     inputs |> Array.iter proc.StandardInput.WriteLine
@@ -69,7 +66,7 @@ let getAnswers problem =
                             |> Array.exactlyThree
                             |> CaseValidScore
                     else
-                        return! Error "Timed out"
+                        return! Result.Error "Timed out"
                 }
 
             return mark
