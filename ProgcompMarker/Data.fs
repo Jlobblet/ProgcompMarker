@@ -4,7 +4,6 @@ open System
 open System.Collections.Concurrent
 open System.Diagnostics
 open System.IO
-open System.Threading.Tasks
 open FSharpPlus
 open FsToolkit.ErrorHandling
 open Common
@@ -17,46 +16,30 @@ let uncurry f (a, b) = f a b
 type CacheDictionary = ConcurrentDictionary<string, DateTime * string []>
 let private cache = CacheDictionary()
 
-let getFromCache (fp: string) =
-    task {
-        let updatedTime = File.GetLastWriteTimeUtc fp
+let private add fp =
+    let updatedTime = File.GetLastWriteTimeUtc fp
+    let data = File.ReadAllLines(fp)
+    updatedTime, data
 
-        let add =
-            Func<_, _> (fun fp ->
-                let t =
-                    task {
-                        let! data = File.ReadAllLinesAsync(fp)
-                        return updatedTime, data
-                    }
+let private update fp (oldTime, oldLines) =
+    let updatedTime = File.GetLastWriteTimeUtc fp
+    if oldTime >= updatedTime then
+        oldTime, oldLines
+    else
+        let data = File.ReadAllLines(fp)
+        updatedTime, data
 
-                t.GetAwaiter().GetResult())
-
-        let update =
-            Func<_, _, _> (fun fp (oldTime, oldLines) ->
-                let t =
-                    task {
-                        if oldTime >= updatedTime then
-                            return oldTime, oldLines
-                        else
-                            let! data = File.ReadAllLinesAsync(fp)
-                            return updatedTime, data
-                    }
-
-                t.GetAwaiter().GetResult())
-
-        return cache.AddOrUpdate(fp, add, update)
-    }
+let private getFromCache (fp: string) =
+    cache.AddOrUpdate(fp, add, update)
 
 let private getData file problem =
     let fp = Path.Combine(dataDir, problem, file)
 
     if File.Exists fp then
-        task {
-            let! lines = getFromCache fp
-            return Ok lines
-        }
+        Ok(getFromCache fp)
+        
     else
-        "File not found" |> Error |> Task.FromResult
+        Error "File not found"
 
 let getInputs = getData "inputs.txt"
 
