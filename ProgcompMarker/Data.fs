@@ -44,6 +44,7 @@ let private getData file problem =
 let getInputs = getData "inputs.txt"
 
 let getAnswers problem =
+    // todo: refactor this
     let fp = Path.Combine(dataDir, problem, "mark")
 
     if File.Exists fp then
