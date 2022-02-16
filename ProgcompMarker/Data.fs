@@ -7,6 +7,9 @@ open System.IO
 open FSharpPlus
 open FsToolkit.ErrorHandling
 open Common
+open Suave.Logging
+
+let private logger = Log.create "Data"
 
 [<Literal>]
 let dataDir = "data"
@@ -36,7 +39,7 @@ let private getData file problem =
     if File.Exists fp then
         Ok(getFromCache fp)
     else
-        Error "File not found"
+        Result.Error "File not found"
 
 let getInputs = getData "inputs.txt"
 
@@ -51,15 +54,25 @@ let externalMarker fp problem (answers: string []) =
         answers |> Array.iter proc.StandardInput.WriteLine
         proc.StandardInput.Close()
 
+        logger.log LogLevel.Info (Message.eventX $"Running external marking script %s{fp}")
+
         return!
-            if proc.WaitForExit 10_000 then
+            match proc.WaitForExit 10_000, proc.ExitCode with
+            | true, 0 ->
                 proc.StandardOutput.ReadLine().Split(" ")
                 |> Array.map int
                 |> Array.exactlyThree
                 |> CaseValidScore
                 |> Ok
-            else
-                Error "Timed out"
+            | true, ec ->
+                logger.log
+                    LogLevel.Error
+                    (Message.eventX $"External marking script %s{fp} exited with nonzero exit code %i{ec}")
+
+                Result.Error $"Marking script failed with exit code %i{ec}"
+            | false, _ ->
+                logger.log LogLevel.Error (Message.eventX $"External marking script %s{fp} timed out")
+                Result.Error "Timed out"
     }
 
 let equalityMarker problem (answers: string []) =
@@ -68,7 +81,7 @@ let equalityMarker problem (answers: string []) =
 
         let! zipped =
             (data, answers)
-            |> Result.protect (uncurry Array.zip) 
+            |> Result.protect (uncurry Array.zip)
             |> Result.mapError string
 
         let score =
