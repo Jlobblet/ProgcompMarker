@@ -37,7 +37,7 @@ type RunSolutionError =
     | ExitCode of int
 
 let runSolution (data: string []) settings (info: ProcessStartInfo) =
-    result {
+    asyncResult {
         printfn "Running solution..."
 
         let! proc =
@@ -48,9 +48,7 @@ let runSolution (data: string []) settings (info: ProcessStartInfo) =
         if settings.InputMode = InputToStdIn then
             data |> Array.iter proc.StandardInput.WriteLine
 
-            proc.StandardInput.Close()
-
-        proc.WaitForExit()
+        let! output = proc.StandardOutput.ReadToEndAsync()
 
         if proc.ExitCode <> 0 then
             eprintfn $"Process exited with nonzero exit code %i{proc.ExitCode}"
@@ -60,10 +58,7 @@ let runSolution (data: string []) settings (info: ProcessStartInfo) =
             printfn "Complete!"
 
             return
-                proc
-                    .StandardOutput
-                    .ReadToEnd()
-                    .Split(Environment.NewLine)
+                output.Split(Environment.NewLine)
                 |> Array.filter (not << String.IsNullOrWhiteSpace)
     }
 
@@ -111,15 +106,10 @@ type RunAndMarkError =
     | MarkSolutionError of string
 
 let runAndMark endpoint httpClient settings info (inputs: InputResponse) =
-    let handleExn =
-        function
-        | Ok () -> ()
-        | Error e -> printfn $"%A{e}"
-
     asyncResult {
         let! answers =
             runSolution inputs.Data settings info
-            |> Result.mapError RunSolutionError
+            |> Async.map (Result.mapError RunSolutionError)
 
         let! scoreResult =
             sendResults endpoint httpClient inputs settings answers
@@ -130,7 +120,9 @@ let runAndMark endpoint httpClient settings info (inputs: InputResponse) =
         printfn $"%A{response.Score}"
     }
     |> Async.RunSynchronously
-    |> handleExn
+    |> function
+        | Ok () -> ()
+        | Error e -> printfn $"%A{e}"
 
 let fileWatcherMode endpoint httpClient settings info inputs =
     printfn "Submitting results when file changes"
@@ -161,3 +153,4 @@ let fileWatcherMode endpoint httpClient settings info inputs =
     watcher.EnableRaisingEvents <- true
     printfn "Press enter at any point to exit"
     Console.ReadLine() |> ignore<string>
+
