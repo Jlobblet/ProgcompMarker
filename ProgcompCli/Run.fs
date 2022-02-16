@@ -41,12 +41,13 @@ type TaskResult =
     | Write
     | Read of string
 
-let writeAndRead settings (proc: Process) (data: string[]) =
+let writeAndRead settings (proc: Process) (data: string []) =
     let write =
         if settings.InputMode = InputToStdIn then
             task {
                 for d in data do
                     do! proc.StandardInput.WriteLineAsync d
+
                 return Write
             }
         else
@@ -57,10 +58,11 @@ let writeAndRead settings (proc: Process) (data: string[]) =
             let! output = proc.StandardOutput.ReadToEndAsync()
             return Read output
         }
-    
+
     task {
         let! results = Task.WhenAll [| write; read |]
         proc.StandardInput.Close()
+
         return
             match results[1] with
             | Read s -> s

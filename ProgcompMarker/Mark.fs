@@ -72,9 +72,7 @@ let private saveResultsToFile () =
     Directory.CreateDirectory dir
     |> ignore<DirectoryInfo>
 
-    logger.log
-        LogLevel.Info
-        (Message.eventX $"Saving results to %s{filepath}")
+    logger.log LogLevel.Info (Message.eventX $"Saving results to %s{filepath}")
 
     File.WriteAllText(filepath, contents)
 
@@ -83,7 +81,7 @@ let markHandler i : WebPart =
         mapJson (fun (req: MarkRequest) ->
             asyncResult {
                 let marker = getAnswerMarker (string i)
-                let! score = marker(req.Data)
+                let! score = marker (req.Data)
 
                 logger.log
                     LogLevel.Info
