@@ -95,4 +95,5 @@ let markHandler i : WebPart =
                 saveResultsToFile ()
 
                 return { Id = i; Score = score }
-            }))
+            }
+            |> Async.RunSynchronously))
