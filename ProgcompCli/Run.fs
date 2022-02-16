@@ -6,6 +6,7 @@ open System.IO
 open System.Net
 open System.Net.Http
 open System.Text
+open System.Threading.Tasks
 open Common
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -36,6 +37,36 @@ type RunSolutionError =
     | ProcessStartError of exn
     | ExitCode of int
 
+type TaskResult =
+    | Write
+    | Read of string
+
+let writeAndRead settings (proc: Process) (data: string[]) =
+    let write =
+        if settings.InputMode = InputToStdIn then
+            task {
+                for d in data do
+                    do! proc.StandardInput.WriteLineAsync d
+                return Write
+            }
+        else
+            Task.FromResult Write
+
+    let read =
+        task {
+            let! output = proc.StandardOutput.ReadToEndAsync()
+            return Read output
+        }
+    
+    task {
+        let! results = Task.WhenAll [| write; read |]
+        proc.StandardInput.Close()
+        return
+            match results[1] with
+            | Read s -> s
+            | Write -> failwith "oh no"
+    }
+
 let runSolution (data: string []) settings (info: ProcessStartInfo) =
     asyncResult {
         printfn "Running solution..."
@@ -45,10 +76,8 @@ let runSolution (data: string []) settings (info: ProcessStartInfo) =
             |> Result.protect Process.Start
             |> Result.mapError ProcessStartError
 
-        if settings.InputMode = InputToStdIn then
-            data |> Array.iter proc.StandardInput.WriteLine
-
-        let! output = proc.StandardOutput.ReadToEndAsync()
+        let! output = writeAndRead settings proc data
+        do! proc.WaitForExitAsync()
 
         if proc.ExitCode <> 0 then
             eprintfn $"Process exited with nonzero exit code %i{proc.ExitCode}"
@@ -153,4 +182,3 @@ let fileWatcherMode endpoint httpClient settings info inputs =
     watcher.EnableRaisingEvents <- true
     printfn "Press enter at any point to exit"
     Console.ReadLine() |> ignore<string>
-
