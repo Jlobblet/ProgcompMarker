@@ -28,7 +28,7 @@ let private update fp (oldTime, oldLines) =
     if oldTime >= updatedTime then
         oldTime, oldLines
     else
-        let data = File.ReadAllLines(fp)
+        let data = File.ReadAllLines(fp) |> Array.filter (not << String.IsNullOrWhiteSpace)
         updatedTime, data
 
 let private getFromCache (fp: string) = cache.AddOrUpdate(fp, add, update)
