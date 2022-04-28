@@ -64,19 +64,23 @@ let private saveResultsToFile () =
 
     let now = DateTimeOffset.UtcNow
 
-    let filename = sprintf "PROGCOMP-RESULTS-%s" (now.ToString "O")
+    let filename = sprintf "PROGCOMP-RESULTS-%s.json" (now.ToString "O")
 
     let dir = "output"
-    let filepath = Path.Join(dir, filename)
-
+    
     Directory.CreateDirectory dir
     |> ignore<DirectoryInfo>
+    
+    let filepath =
+        Path.Join(dir, filename)
+        |> Path.GetFullPath
 
     logger.log
         LogLevel.Info
         (Message.eventX $"Saving results to %s{filepath}")
 
-    File.WriteAllText(filepath, contents)
+    File.WriteAllTextAsync(filepath, contents)
+    |> Async.AwaitTask
 
 let markHandler i : WebPart =
     context (fun _ ->
@@ -92,7 +96,8 @@ let markHandler i : WebPart =
                 addResult req.User i score
                 |> ignore<int * DateTimeOffset>
 
-                saveResultsToFile ()
+                do! saveResultsToFile ()
 
                 return { Id = i; Score = score }
-            }))
+            }
+            |> Async.RunSynchronously))

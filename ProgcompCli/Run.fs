@@ -11,6 +11,11 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 open Settings
 
+let private handleExn =
+        function
+        | Ok () -> ()
+        | Error e -> printfn $"%A{e}"
+
 let getProcessStartInfo settings data =
     let info =
         ProcessStartInfo(
@@ -72,10 +77,10 @@ type SendResultsError =
     | ResponseError of HttpStatusCode
     | ResponseJsonError of exn
 
-let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputResponse) settings answers =
+let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) settings answers =
     asyncResult {
         let req =
-            { Id = inputs.Id
+            { Id = settings.ProblemNumber
               User = settings.Username
               Data = answers }
 
@@ -85,7 +90,7 @@ let sendResults (endpoint: UriBuilder) (httpClient: HttpClient) (inputs: InputRe
         printfn "Sending solutions to server..."
 
         let! responseTask =
-            endpoint.Path <- $"/mark/%u{inputs.Id}"
+            endpoint.Path <- $"/mark/%u{settings.ProblemNumber}"
 
             (endpoint.Uri, content)
             |> Result.protect httpClient.PostAsync
@@ -111,18 +116,13 @@ type RunAndMarkError =
     | MarkSolutionError of string
 
 let runAndMark endpoint httpClient settings info (inputs: InputResponse) =
-    let handleExn =
-        function
-        | Ok () -> ()
-        | Error e -> printfn $"%A{e}"
-
     asyncResult {
         let! answers =
             runSolution inputs.Data settings info
             |> Result.mapError RunSolutionError
 
         let! scoreResult =
-            sendResults endpoint httpClient inputs settings answers
+            sendResults endpoint httpClient settings answers
             |>> (Result.mapError SendResultsError)
 
         let! response = Result.mapError MarkSolutionError scoreResult
@@ -161,3 +161,26 @@ let fileWatcherMode endpoint httpClient settings info inputs =
     watcher.EnableRaisingEvents <- true
     printfn "Press enter at any point to exit"
     Console.ReadLine() |> ignore<string>
+
+type SendFileError =
+    | OpenFileError of exn
+    | SendResultsError of SendResultsError
+    | MarkSolutionError of string
+
+let sendFile endpoint httpClient settings =
+    asyncResult {
+        let! answers =
+            Result.protect File.ReadAllLines
+            <| settings.ExecutablePath
+            |> Result.mapError OpenFileError
+
+        let! scoreResult =
+            sendResults endpoint httpClient settings answers
+            |>> (Result.mapError SendResultsError)
+
+        let! response = Result.mapError MarkSolutionError scoreResult
+
+        printfn $"%A{response.Score}"
+    }
+    |> Async.RunSynchronously
+    |> handleExn

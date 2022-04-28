@@ -22,16 +22,22 @@ let main argv =
 
     use httpClient = new HttpClient()
 
-    let inputs = getInputs endpoint httpClient settings
+    if settings.SubmissionMode = SendFile then
+        sendFile endpoint httpClient settings
+    else
+        use httpClient = new HttpClient()
 
-    let info = getProcessStartInfo settings inputs.Data
+        let inputs = getInputs endpoint httpClient settings
 
-    if settings.SubmissionMode = RunOnce then
-        runAndMark endpoint httpClient settings info inputs
-    elif settings.SubmissionMode = FileWatcherRepeat then
-        // Run once manually
-        runAndMark endpoint httpClient settings info inputs
-        // Run the rest automatically
-        fileWatcherMode endpoint httpClient settings info inputs
+        let info = getProcessStartInfo settings inputs.Data
+
+        if settings.SubmissionMode = RunOnce then
+            runAndMark endpoint httpClient settings info inputs
+        elif settings.SubmissionMode = FileWatcherRepeat then
+            // Run once manually
+            runAndMark endpoint httpClient settings info inputs
+            // Run the rest automatically
+            fileWatcherMode endpoint httpClient settings info inputs
+        
 
     0

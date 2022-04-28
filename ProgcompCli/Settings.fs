@@ -7,7 +7,7 @@ open Argu
 let ConfigFile = "app.config"
 
 type Arguments =
-    | [<Unique; AltCommandLine("-w")>] Auto_Submit
+    | [<Unique; AltCommandLine("-m")>] Submission_Mode of string
     | [<Unique; AltCommandLine("-a")>] Pass_Input_As_Args
     | [<Mandatory; NoCommandLine>] Endpoint of string
     | [<Mandatory; NoCommandLine>] Username of string
@@ -17,7 +17,7 @@ type Arguments =
     interface IArgParserTemplate with
         member s.Usage =
             match s with
-            | Auto_Submit -> "Automatically run the provided executable again when the file is updated."
+            | Submission_Mode _ -> "What method to use for submitting results. Available options: 'once', 'watch', 'file'. Default: 'once'"
             | Pass_Input_As_Args -> "If set, pass the problem input as arguments rather than to standard input."
             | Endpoint _ -> "URL to the server that will send problem inputs and mark answers."
             | Username _ -> "A username that is used to differentiate submissions."
@@ -39,11 +39,13 @@ let private Parser =
 type SubmissionMode =
     | RunOnce
     | FileWatcherRepeat
-    static member PostProcess result =
-        if result then
-            FileWatcherRepeat
-        else
-            RunOnce
+    | SendFile
+    static member PostProcess (result: string) =
+        match result.ToLowerInvariant() with
+        | "once" -> RunOnce
+        | "watch" -> FileWatcherRepeat
+        | "file" -> SendFile
+        | _ -> failwith "Invalid submission mode"
 
 type InputMode =
     | InputToStdIn
@@ -152,8 +154,8 @@ module Settings =
         let results = Parser.Parse(argv, configurationReader)
 
         let submissionMode =
-            results.Contains <@ Auto_Submit @>
-            |> SubmissionMode.PostProcess
+            results.TryPostProcessResult(<@ Submission_Mode @>, SubmissionMode.PostProcess)
+            |> Option.defaultValue RunOnce
 
         let passInputAsArgs =
             results.Contains <@ Pass_Input_As_Args @>
